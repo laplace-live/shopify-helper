@@ -19,6 +19,7 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.65",
     "@shopify/shopify-api": "^11.8.0",
     "consola": "^3.4.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.1/xlsx-0.20.1.tgz"

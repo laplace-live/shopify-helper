@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { parseArgs } from 'util'
+import { createCanvas } from '@napi-rs/canvas'
 
 // Types for our command line arguments
 type CommandLineArgs = {
@@ -7,6 +8,7 @@ type CommandLineArgs = {
     variantId: string
     discount: string
     note?: string
+    png?: boolean
   }
   positionals: string[]
 }
@@ -42,9 +44,12 @@ const { values } = parseArgs({
       required: true,
     },
     note: {
-      // Added note option
       type: 'string',
       required: false,
+    },
+    png: {
+      type: 'boolean',
+      default: false,
     },
   },
   strict: true,
@@ -65,11 +70,47 @@ if (isNaN(discountValue) || discountValue < 0 || discountValue > 100) {
 // Generate a random coupon code
 const generateCouponCode = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let code = 'SUBSPACE✦'
+  let code = 'SUBSPACE_'
   for (let i = 0; i < 12; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length))
   }
   return code
+}
+
+// Function to create PNG image
+async function createImage(content: string[], code: string) {
+  const fontSize = 16
+  const lineHeight = fontSize * 1.5
+  const padding = 30
+  const charWidth = fontSize * 0.6 // Monospace character width
+
+  // Calculate maximum line width
+  const maxWidth = Math.max(...content.map((line) => line.length)) * charWidth + padding * 2
+
+  // Create canvas with monospace font
+  const canvas = createCanvas(maxWidth, content.length * lineHeight + padding * 2)
+  const ctx = canvas.getContext('2d')
+
+  // Set background
+  ctx.fillStyle = '#7000ff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  // Set text style
+  ctx.font = `${fontSize}px "Menlo"`
+  ctx.fillStyle = '#f3e9ff'
+  ctx.textBaseline = 'top'
+
+  // Draw each line
+  content.forEach((line, index) => {
+    ctx.fillText(line, padding, padding + index * lineHeight)
+  })
+
+  // Save image
+  const filename = `output/${code}.png`
+  const buffer = canvas.toBuffer('image/png')
+  const uint8Array = new Uint8Array(buffer)
+  await Bun.write(filename, uint8Array)
+  // console.log(`PNG image saved as: ${filename}`)
 }
 
 // Create the price rule and discount code
@@ -140,17 +181,30 @@ async function createCoupon() {
 
     const discount = (await discountResponse.json()).discount_code as ShopifyDiscount
 
-    console.log(`
-        #                               #
- ## # # ### ###  ##  ## ### ###      ## ### ### ###
- #  # # # # # #  #  # # #   ##       #  # # # # # #
-##  ### ### ### ##  ### ### ###     ##  # # ### ###
-            #                    #              #
-`)
-    console.log('Your one-time coupon:')
-    console.log(`Code: ${discount.code}`)
-    console.log(`Discount: ${discountValue}% off`)
-    console.log(`Variant ID: ${values.variantId}`)
+    // Prepare content for both console and image
+    const asciiArt = [
+      '        #                               #           ',
+      ' ## # # ###  ## ###  ## ### ###      ## ### ### ### ',
+      ' #  # # # #  #  # # # # #   ##       #  # # # # # # ',
+      '##  ### ### ##  ### ### ### ###     ##  # # ### ### ',
+      '                #                #              #   ',
+    ]
+    const content = [
+      ...asciiArt,
+      'Your one-time coupon:',
+      `Code: ${discount.code}`,
+      `Discount: ${discountValue}% off`,
+      `Variant ID: ${values.variantId}`,
+      `Redeem at: subspace.shop`,
+    ]
+
+    // Print to console
+    content.forEach((line) => console.log(line))
+
+    // If PNG option is enabled, create image
+    if (values.png) {
+      await createImage(content, code)
+    }
 
     // Fetch variant details to show more information
     const variantResponse = await fetch(
