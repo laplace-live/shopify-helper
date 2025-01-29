@@ -1,6 +1,10 @@
-# LAPLACE Shopify CSV Converter
+# LAPLACE Shopify Helper
 
-Convert Shopify exported CSV to external providers
+Shopify Helper is a set of tools to help you manage your Shopify store.
+
+- Convert Shopify exported CSV to external providers
+- Generate discount coupon codes for Shopify
+- Variant ID lookup based on SKU
 
 ## Supported Providers
 
