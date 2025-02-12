@@ -75,6 +75,7 @@ providers.forEach((provider) => {
       const addObj = processAddr(row)
       const collection = extractCollection(row['Lineitem sku'])
       const resolvedSku = row['Lineitem sku'].replace(/__COLLE:.+$/, '')
+      const resolvedPostal = addObj.zip.toString().replace("'", '')
 
       if (isRouzao) {
         return {
@@ -155,7 +156,7 @@ providers.forEach((provider) => {
         '州/省': addObj.prov,
         '城市': addObj.city,
         '地址1': addObj.street,
-        '邮编': addObj.zip,
+        '邮编': resolvedPostal,
         '电话2': addObj.phone,
         '收货国家': addObj.country,
         '_collection': collection,
