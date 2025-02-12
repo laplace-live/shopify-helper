@@ -13,16 +13,16 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "prettier": "^3.4.2"
+    "prettier": "^3.5.0"
   },
   "peerDependencies": {
-    "typescript": "^5.4.3"
+    "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.65",
-    "@shopify/shopify-api": "^11.8.0",
+    "@napi-rs/canvas": "^0.1.67",
+    "@shopify/shopify-api": "^11.8.1",
     "consola": "^3.4.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.1/xlsx-0.20.1.tgz"
   },
-  "packageManager": "bun@1.1.29"
+  "packageManager": "bun@1.2.2"
 }
