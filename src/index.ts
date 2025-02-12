@@ -71,6 +71,7 @@ providers.forEach((provider) => {
     .map((row, idx) => {
       const isRouzao = row['Lineitem sku'] && row['Lineitem sku'].startsWith('ROUZAO_')
       const isGuanyi = row['Lineitem sku'] && row['Lineitem sku'].startsWith('SUBSPACE_WH1_')
+      const isSimple = row['Lineitem sku'] && row['Lineitem sku'].startsWith('TAOBAO_MJT_')
       const orderId = args.orderId ? args.orderId : `${orderPrefix}${row['Name']}`
       const addObj = processAddr(row)
       const collection = extractCollection(row['Lineitem sku'])
@@ -86,6 +87,18 @@ providers.forEach((provider) => {
           商家编码: resolvedSku,
           下单数量: row['Lineitem quantity'],
           _collection: collection,
+        }
+      }
+
+      // 简易表单，地址不分字段
+      if (isSimple) {
+        return {
+          '产品编号': resolvedSku.replace(provider, ''),
+          '产品数量': row['Lineitem quantity'],
+          '收货地址': `${row['Shipping Name']}，${addObj.rouzaoPhone}，${addObj.rouzaoAddr}`,
+          '备注': orderId,
+          '快递单号（供应商填写）': '',
+          '_collection': collection,
         }
       }
 

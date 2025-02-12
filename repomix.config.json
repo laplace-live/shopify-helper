@@ -1,0 +1,10 @@
+{
+  "output": {
+    "style": "markdown",
+    "removeComments": false,
+    "showLineNumbers": false
+  },
+  "ignore": {
+    "customPatterns": ["*.test.ts", "docs/**", "bun.lock*"]
+  }
+}
