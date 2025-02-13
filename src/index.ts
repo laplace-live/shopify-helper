@@ -29,7 +29,9 @@ const { values: args, positionals } = parseArgs({
   options: {
     input: { type: 'string' },
     outputDir: { type: 'string' },
-    orderId: { type: 'boolean' },
+    /** 手动指定订单 ID */
+    orderId: { type: 'string' },
+    note: { type: 'string' },
   },
   strict: true,
   allowPositionals: true,
@@ -65,7 +67,14 @@ providers.forEach((provider) => {
     // Filter out the necessary columns
     .filter((row) => {
       // sku can be empty
-      return row['Lineitem sku'] && row['Lineitem sku'].startsWith(provider) && !row['Cancelled at']
+      return (
+        row['Lineitem sku'] &&
+        row['Lineitem sku'].startsWith(provider) &&
+        // Orders cancelled will still be exported by Shopify, so we need to exclude it here
+        !row['Cancelled at'] &&
+        // Exclude item fulfillment already requested by shop owner
+        !row['Tags']?.includes('Items Requested')
+      )
     })
     // Map keys
     .map((row, idx) => {
@@ -194,7 +203,8 @@ providers.forEach((provider) => {
     const providerStr = provider.toLowerCase().replace(/_$/g, '')
 
     if (data.length > 0) {
-      const outputFilename = `${collection}_${providerStr}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      const customNote = args.note ? ` - ${args.note}` : ''
+      const outputFilename = `${new Date().toISOString().slice(0, 10)}_${collection}_${providerStr}${customNote}.xlsx`
       const fullPath = args.outputDir ? `${args.outputDir}/${outputFilename}` : outputFilename
       const newWb = XLSX.utils.book_new()
       const newWorksheet = XLSX.utils.json_to_sheet(

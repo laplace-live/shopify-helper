@@ -5,6 +5,6 @@
     "showLineNumbers": false
   },
   "ignore": {
-    "customPatterns": ["*.test.ts", "docs/**", "bun.lock*"]
+    "customPatterns": ["*.test.ts", "docs/**", "src/const/geo.ts", "bun.lock*", "LICENSE"]
   }
 }

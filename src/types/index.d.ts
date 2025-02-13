@@ -34,7 +34,14 @@ export interface ShopifyOrderExportItem {
   'Subtotal'?: number
   'Shipping'?: number
   'Taxes'?: number
+  /**
+   * 实际支付价格
+   */
   'Total'?: number
+  /**
+   * 优惠码
+   */
+  'Discount Code'?: string
   'Discount Amount'?: number
   'Shipping Method'?: string
   'Billing Name'?: string
@@ -77,6 +84,7 @@ export interface ShopifyOrderExportItem {
   'Refunded Amount'?: number
   'Outstanding Balance'?: number
   'Id'?: number
+  'Tags'?: string
   'Risk Level'?: string
   'Source'?: string
   'Tax 1 Name'?: string
