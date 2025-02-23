@@ -29,7 +29,7 @@ const { values: args, positionals } = parseArgs({
   options: {
     input: { type: 'string' },
     outputDir: { type: 'string' },
-    /** 手动指定订单 ID */
+    /** 手动指定订单 ID suffix，用于修复柔造即使删除错误订单后依然出现订单已存在的问题 */
     orderId: { type: 'string' },
     note: { type: 'string' },
   },
@@ -72,6 +72,8 @@ providers.forEach((provider) => {
         row['Lineitem sku'].startsWith(provider) &&
         // Orders cancelled will still be exported by Shopify, so we need to exclude it here
         !row['Cancelled at'] &&
+        // Only include items that are pending fulfillment
+        row['Lineitem fulfillment status'] === 'pending' &&
         // Exclude item fulfillment already requested by shop owner
         !row['Tags']?.includes('Items Requested')
       )
@@ -81,7 +83,9 @@ providers.forEach((provider) => {
       const isRouzao = row['Lineitem sku'] && row['Lineitem sku'].startsWith('ROUZAO_')
       const isGuanyi = row['Lineitem sku'] && row['Lineitem sku'].startsWith('SUBSPACE_WH1_')
       const isSimple = row['Lineitem sku'] && row['Lineitem sku'].startsWith('TAOBAO_MJT_')
-      const orderId = args.orderId ? args.orderId : `${orderPrefix}${row['Name']}`
+      const orderId = args.orderId
+        ? `${orderPrefix}${row['Name']}_${args.orderId}`
+        : `${orderPrefix}${row['Name']}`
       const addObj = processAddr(row)
       const collection = extractCollection(row['Lineitem sku'])
       const resolvedSku = row['Lineitem sku'].replace(/__COLLE:.+$/, '')

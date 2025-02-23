@@ -19,7 +19,7 @@ export interface ShopifyOrderExportItem {
   'Lineitem sku': string
   'Lineitem requires shipping': 'true' | 'false'
   'Lineitem taxable': 'true' | 'false'
-  'Lineitem fulfillment status': 'pending'
+  'Lineitem fulfillment status': 'pending' | 'not_eligible' | 'fulfilled'
   'Vendor': string
   'Lineitem discount': number
 

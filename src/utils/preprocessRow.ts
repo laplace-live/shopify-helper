@@ -26,6 +26,9 @@ export function preprocessRow(data: ShopifyOrderExportItem[]) {
         ...orderMap[orderId],
         'Lineitem sku': sku,
         'Lineitem name': row['Lineitem name'],
+        'Lineitem requires shipping': row['Lineitem requires shipping'],
+        'Lineitem taxable': row['Lineitem taxable'],
+        'Lineitem fulfillment status': row['Lineitem fulfillment status'],
       }
 
       // Fill the missing fields
