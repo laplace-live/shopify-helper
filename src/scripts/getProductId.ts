@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { parseArgs } from 'util'
+import { parseArgs } from 'node:util'
 
 // Types for Shopify API responses
 type ShopifyVariant = {
@@ -53,17 +53,13 @@ const accessToken = process.env.SHOPIFY_API_SECRET
 
 async function findProduct() {
   if (!shop || !accessToken) {
-    console.error(
-      'Missing required environment variables: SHOPIFY_SHOP_SLUG and/or SHOPIFY_API_SECRET'
-    )
+    console.error('Missing required environment variables: SHOPIFY_SHOP_SLUG and/or SHOPIFY_API_SECRET')
     process.exit(1)
   }
 
   // Validate that at least one search parameter is provided
   if (!values.sku && !values.title && !values.option1 && !values.option2 && !values.option3) {
-    console.error(
-      'Please provide at least one search parameter: --sku, --title, --option1, --option2, or --option3'
-    )
+    console.error('Please provide at least one search parameter: --sku, --title, --option1, --option2, or --option3')
     process.exit(1)
   }
 
@@ -110,8 +106,8 @@ async function findProduct() {
     }
 
     // Filter products based on provided criteria
-    const matchingProducts = allProducts.filter((product) => {
-      return product.variants.some((variant) => {
+    const matchingProducts = allProducts.filter(product => {
+      return product.variants.some(variant => {
         let match = true
 
         if (values.sku) {
@@ -144,24 +140,21 @@ async function findProduct() {
 
     // Display results
     console.log(`Found ${matchingProducts.length} matching product(s):\n`)
-    matchingProducts.forEach((product) => {
+    matchingProducts.forEach(product => {
       console.log(`Product: ${product.title}`)
       console.log(`Product ID: ${product.id}`)
       console.log('\nMatching variants:')
 
-      const matchingVariants = product.variants.filter((variant) => {
+      const matchingVariants = product.variants.filter(variant => {
         let match = true
         if (values.sku) match = match && variant.sku === values.sku
-        if (values.option1)
-          match = match && variant.option1?.toLowerCase() === values.option1.toLowerCase()
-        if (values.option2)
-          match = match && variant.option2?.toLowerCase() === values.option2.toLowerCase()
-        if (values.option3)
-          match = match && variant.option3?.toLowerCase() === values.option3.toLowerCase()
+        if (values.option1) match = match && variant.option1?.toLowerCase() === values.option1.toLowerCase()
+        if (values.option2) match = match && variant.option2?.toLowerCase() === values.option2.toLowerCase()
+        if (values.option3) match = match && variant.option3?.toLowerCase() === values.option3.toLowerCase()
         return match
       })
 
-      matchingVariants.forEach((variant) => {
+      matchingVariants.forEach(variant => {
         console.log(`\nVariant ID: ${variant.id}`)
         console.log(`SKU: ${variant.sku}`)
         console.log(`Price: ${variant.price}`)

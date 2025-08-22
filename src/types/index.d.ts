@@ -1,10 +1,10 @@
 export interface ShopifyOrderExportItem {
-  '__rowNum__': number
+  __rowNum__: number
   /**
    * ie. `#1165`
    */
-  'Name': string
-  'Email': string
+  Name: string
+  Email: string
   /**
    * `45384.34789351852`
    */
@@ -20,7 +20,7 @@ export interface ShopifyOrderExportItem {
   'Lineitem requires shipping': 'true' | 'false'
   'Lineitem taxable': 'true' | 'false'
   'Lineitem fulfillment status': 'pending' | 'not_eligible' | 'fulfilled'
-  'Vendor': string
+  Vendor: string
   'Lineitem discount': number
 
   'Financial Status'?: 'paid'
@@ -30,14 +30,14 @@ export interface ShopifyOrderExportItem {
   'Paid at'?: number
   'Fulfillment Status'?: 'unfulfilled'
   'Accepts Marketing'?: 'yes' | 'no'
-  'Currency'?: string
-  'Subtotal'?: number
-  'Shipping'?: number
-  'Taxes'?: number
+  Currency?: string
+  Subtotal?: number
+  Shipping?: number
+  Taxes?: number
   /**
    * 实际支付价格
    */
-  'Total'?: number
+  Total?: number
   /**
    * 优惠码
    */
@@ -83,10 +83,10 @@ export interface ShopifyOrderExportItem {
   'Payment Reference'?: string
   'Refunded Amount'?: number
   'Outstanding Balance'?: number
-  'Id'?: number
-  'Tags'?: string
+  Id?: number
+  Tags?: string
   'Risk Level'?: string
-  'Source'?: string
+  Source?: string
   'Tax 1 Name'?: string
   'Tax 1 Value'?: number
   /**

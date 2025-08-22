@@ -1,5 +1,6 @@
-import { CHINA_PROVINCES, COUNTRIES, COUNTY_LEVEL_CITIES } from '../const/geo'
 import type { ShopifyOrderExportItem } from '../types'
+
+import { CHINA_PROVINCES, COUNTRIES, COUNTY_LEVEL_CITIES } from '../const/geo'
 
 export function normalizeCity(cityName: string) {
   const parts = cityName.split('市')
@@ -8,7 +9,7 @@ export function normalizeCity(cityName: string) {
     return cityName
   }
 
-  return parts[0] + '市' + (parts[1] || '')
+  return `${parts[0]}市${parts[1] || ''}`
 }
 
 export function generateRouzaoPhone(phone: string | number) {

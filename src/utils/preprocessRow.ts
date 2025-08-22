@@ -10,7 +10,7 @@ export function preprocessRow(data: ShopifyOrderExportItem[]) {
   const enrichedData: ShopifyOrderExportItem[] = []
 
   for (const row of data) {
-    const orderId = row['Name']
+    const orderId = row.Name
 
     // Store order ID with full details
     if (!orderMap[orderId]) {
@@ -34,10 +34,8 @@ export function preprocessRow(data: ShopifyOrderExportItem[]) {
       // Fill the missing fields
       newRow['Shipping Name'] = newRow['Shipping Name'] || orderMap[orderId]['Shipping Name']
       newRow['Shipping Phone'] = newRow['Shipping Phone'] || orderMap[orderId]['Shipping Phone']
-      newRow['Shipping Country'] =
-        newRow['Shipping Country'] || orderMap[orderId]['Shipping Country']
-      newRow['Shipping Province'] =
-        newRow['Shipping Province'] || orderMap[orderId]['Shipping Province']
+      newRow['Shipping Country'] = newRow['Shipping Country'] || orderMap[orderId]['Shipping Country']
+      newRow['Shipping Province'] = newRow['Shipping Province'] || orderMap[orderId]['Shipping Province']
       newRow['Shipping City'] = newRow['Shipping City'] || orderMap[orderId]['Shipping City']
       newRow['Shipping Street'] = newRow['Shipping Street'] || orderMap[orderId]['Shipping Street']
       newRow['Shipping Zip'] = newRow['Shipping Zip'] || orderMap[orderId]['Shipping Zip']

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { parseArgs } from 'util'
+import { parseArgs } from 'node:util'
 import { createCanvas } from '@napi-rs/canvas'
 
 // Types for our command line arguments
@@ -62,7 +62,7 @@ const accessToken = process.env.SHOPIFY_API_SECRET
 
 // Validate discount value
 const discountValue = parseFloat(values.discount)
-if (isNaN(discountValue) || discountValue < 0 || discountValue > 100) {
+if (Number.isNaN(discountValue) || discountValue < 0 || discountValue > 100) {
   console.error('Discount must be a number between 0 and 100')
   process.exit(1)
 }
@@ -85,7 +85,7 @@ async function createImage(content: string[], code: string) {
   const charWidth = fontSize * 0.6 // Monospace character width
 
   // Calculate maximum line width
-  const maxWidth = Math.max(...content.map((line) => line.length)) * charWidth + padding * 2
+  const maxWidth = Math.max(...content.map(line => line.length)) * charWidth + padding * 2
 
   // Create canvas with monospace font
   const canvas = createCanvas(maxWidth, content.length * lineHeight + padding * 2)
@@ -116,9 +116,7 @@ async function createImage(content: string[], code: string) {
 // Create the price rule and discount code
 async function createCoupon() {
   if (!shop || !accessToken) {
-    console.error(
-      'Missing required environment variables: SHOPIFY_SHOP_SLUG and/or SHOPIFY_API_SECRET'
-    )
+    console.error('Missing required environment variables: SHOPIFY_SHOP_SLUG and/or SHOPIFY_API_SECRET')
     process.exit(1)
   }
 
@@ -126,31 +124,28 @@ async function createCoupon() {
     const code = generateCouponCode()
 
     // First, create the price rule targeting the specific variant
-    const priceRuleResponse = await fetch(
-      `https://${shop}.myshopify.com/admin/api/2024-01/price_rules.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': accessToken,
+    const priceRuleResponse = await fetch(`https://${shop}.myshopify.com/admin/api/2024-01/price_rules.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken,
+      },
+      body: JSON.stringify({
+        price_rule: {
+          title: `${code} - One-time ${discountValue}% off ${values.note ? ` for ${values.note}` : ''}`,
+          target_type: 'line_item',
+          target_selection: 'entitled',
+          allocation_method: 'across',
+          value_type: 'percentage',
+          value: `-${discountValue}`,
+          customer_selection: 'all',
+          entitled_variant_ids: [values.variantId],
+          once_per_customer: true,
+          starts_at: new Date().toISOString(),
+          usage_limit: 1,
         },
-        body: JSON.stringify({
-          price_rule: {
-            title: `${code} - One-time ${discountValue}% off ${values.note ? ` for ${values.note}` : ''}`,
-            target_type: 'line_item',
-            target_selection: 'entitled',
-            allocation_method: 'across',
-            value_type: 'percentage',
-            value: `-${discountValue}`,
-            customer_selection: 'all',
-            entitled_variant_ids: [values.variantId],
-            once_per_customer: true,
-            starts_at: new Date().toISOString(),
-            usage_limit: 1,
-          },
-        }),
-      }
-    )
+      }),
+    })
 
     if (!priceRuleResponse.ok) {
       throw new Error(`Failed to create price rule: ${await priceRuleResponse.text()}`)
@@ -199,7 +194,9 @@ async function createCoupon() {
     ]
 
     // Print to console
-    content.forEach((line) => console.log(line))
+    content.forEach(line => {
+      console.log(line)
+    })
 
     // If PNG option is enabled, create image
     if (values.png) {

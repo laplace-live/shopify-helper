@@ -1,21 +1,20 @@
-import { parseArgs } from 'util'
+/* load 'fs' for readFile and writeFile support */
+import * as fs from 'node:fs'
+import { parseArgs } from 'node:util'
 import { consola } from 'consola'
-
 // https://docs.sheetjs.com/docs/getting-started/installation/bun/
 import * as XLSX from 'xlsx'
 
-/* load 'fs' for readFile and writeFile support */
-import * as fs from 'fs'
 XLSX.set_fs(fs)
 
 /* load 'stream' for stream support */
-import { Readable } from 'stream'
+import { Readable } from 'node:stream'
 
 import type { ShopifyOrderExportItem } from './types'
 
+import { extractCollection } from './utils/extractCollection'
 import { preprocessRow } from './utils/preprocessRow'
 import { processAddr } from './utils/processAddr'
-import { extractCollection } from './utils/extractCollection'
 
 XLSX.stream.set_readable(Readable)
 
@@ -24,7 +23,7 @@ XLSX.stream.set_readable(Readable)
 // XLSX.set_cptable(cpexcel)
 
 // https://bun.sh/guides/process/argv
-const { values: args, positionals } = parseArgs({
+const { values: args } = parseArgs({
   args: Bun.argv,
   options: {
     input: { type: 'string' },
@@ -53,7 +52,7 @@ const worksheet = wb.Sheets[wb.SheetNames[0]]
 const json = XLSX.utils.sheet_to_json<ShopifyOrderExportItem>(worksheet)
 
 // Filter out rows without SKU
-const resolvedJson = json.filter((row) => row['Lineitem sku'])
+const resolvedJson = json.filter(row => row['Lineitem sku'])
 consola.start(`Got ${resolvedJson.length} item${resolvedJson.length > 1 && 's'}`)
 
 const processedJson = preprocessRow(resolvedJson)
@@ -62,30 +61,27 @@ const providersString = process.env.PROVIDERS || ''
 const providers = providersString.split(',')
 const orderPrefix = process.env.ORDER_PREFIX || 'SHOPIFY'
 
-providers.forEach((provider) => {
+providers.forEach(provider => {
   const filteredData = processedJson
     // Filter out the necessary columns
-    .filter((row) => {
+    .filter(row => {
       // sku can be empty
       return (
-        row['Lineitem sku'] &&
-        row['Lineitem sku'].startsWith(provider) &&
+        row['Lineitem sku']?.startsWith(provider) &&
         // Orders cancelled will still be exported by Shopify, so we need to exclude it here
         !row['Cancelled at'] &&
         // Only include items that are pending fulfillment
         row['Lineitem fulfillment status'] === 'pending' &&
         // Exclude item fulfillment already requested by shop owner
-        !row['Tags']?.includes('Items Requested')
+        !row.Tags?.includes('Items Requested')
       )
     })
     // Map keys
     .map((row, idx) => {
-      const isRouzao = row['Lineitem sku'] && row['Lineitem sku'].startsWith('ROUZAO_')
-      const isGuanyi = row['Lineitem sku'] && row['Lineitem sku'].startsWith('SUBSPACE_WH1_')
-      const isSimple = row['Lineitem sku'] && row['Lineitem sku'].startsWith('TAOBAO_MJT_')
-      const orderId = args.orderId
-        ? `${orderPrefix}${row['Name']}_${args.orderId}`
-        : `${orderPrefix}${row['Name']}`
+      const isRouzao = row['Lineitem sku']?.startsWith('ROUZAO_')
+      const isGuanyi = row['Lineitem sku']?.startsWith('SUBSPACE_WH1_')
+      const isSimple = row['Lineitem sku']?.startsWith('TAOBAO_MJT_')
+      const orderId = args.orderId ? `${orderPrefix}${row.Name}_${args.orderId}` : `${orderPrefix}${row.Name}`
       const addObj = processAddr(row)
       const collection = extractCollection(row['Lineitem sku'])
       const resolvedSku = row['Lineitem sku'].replace(/__COLLE:.+$/, '')
@@ -106,12 +102,12 @@ providers.forEach((provider) => {
       // 简易表单，地址不分字段
       if (isSimple) {
         return {
-          '产品编号': resolvedSku.replace(provider, ''),
-          '产品数量': row['Lineitem quantity'],
-          '收货地址': `${row['Shipping Name']}，${addObj.rouzaoPhone}，${addObj.rouzaoAddr}`,
-          '备注': orderId,
+          产品编号: resolvedSku.replace(provider, ''),
+          产品数量: row['Lineitem quantity'],
+          收货地址: `${row['Shipping Name']}，${addObj.rouzaoPhone}，${addObj.rouzaoAddr}`,
+          备注: orderId,
           '快递单号（供应商填写）': '',
-          '_collection': collection,
+          _collection: collection,
         }
       }
 
@@ -122,7 +118,7 @@ providers.forEach((provider) => {
           店铺: process.env.GUANYI_ERP_SHOP_NAME || '未知店铺',
           平台单号: orderId,
           买家会员: addObj.rouzaoPhone,
-          支付金额: !process.env.GUANYI_ERP_PRIVATE_MODE ? row['Total'] : 0,
+          支付金额: !process.env.GUANYI_ERP_PRIVATE_MODE ? row.Total : 0,
           商品名称: row['Lineitem name'],
           商品代码: resolvedSku.replace(provider, ''),
           规格代码: resolvedSku.replace(provider, ''),
@@ -173,19 +169,19 @@ providers.forEach((provider) => {
 
       // General provider
       return {
-        '订单ID': orderId,
-        '商品编号': `${orderId}-${idx + 1}`,
-        '产品信息': row['Lineitem name'],
-        '数量': row['Lineitem quantity'],
-        'SKU': resolvedSku.replace(provider, ''),
-        '姓名': row['Shipping Name'],
+        订单ID: orderId,
+        商品编号: `${orderId}-${idx + 1}`,
+        产品信息: row['Lineitem name'],
+        数量: row['Lineitem quantity'],
+        SKU: resolvedSku.replace(provider, ''),
+        姓名: row['Shipping Name'],
         '州/省': addObj.prov,
-        '城市': addObj.city,
-        '地址1': addObj.street,
-        '邮编': resolvedPostal,
-        '电话2': addObj.phone,
-        '收货国家': addObj.country,
-        '_collection': collection,
+        城市: addObj.city,
+        地址1: addObj.street,
+        邮编: resolvedPostal,
+        电话2: addObj.phone,
+        收货国家: addObj.country,
+        _collection: collection,
       }
     })
 
@@ -212,7 +208,7 @@ providers.forEach((provider) => {
       const fullPath = args.outputDir ? `${args.outputDir}/${outputFilename}` : outputFilename
       const newWb = XLSX.utils.book_new()
       const newWorksheet = XLSX.utils.json_to_sheet(
-        data.map((item) => {
+        data.map(item => {
           // Remove internal collection field
           const { _collection, ...rest } = item
           return rest
