@@ -46,7 +46,10 @@ const data = await Bun.file(filePath).text()
 const wb = XLSX.read(data, { type: 'string' })
 
 // Get the first sheet name and the worksheet
-const worksheet = wb.Sheets[wb.SheetNames[0]]
+const sheetName = wb.SheetNames[0]
+if (!sheetName) throw new Error('No sheets found in workbook')
+const worksheet = wb.Sheets[sheetName]
+if (!worksheet) throw new Error(`Worksheet "${sheetName}" not found`)
 
 // Convert to JSON
 const json = XLSX.utils.sheet_to_json<ShopifyOrderExportItem>(worksheet)
