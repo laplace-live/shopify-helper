@@ -1,8 +1,16 @@
 #!/usr/bin/env bun
 import { parseArgs } from 'node:util'
 import { createCanvas } from '@napi-rs/canvas'
+import type { RestResources } from '@shopify/shopify-api/rest/admin/2026-01'
 
-// Types for our command line arguments
+type PriceRule = InstanceType<RestResources['PriceRule']>
+type DiscountCode = InstanceType<RestResources['DiscountCode']>
+type Variant = InstanceType<RestResources['Variant']>
+
+type PriceRuleResponse = { price_rule: PriceRule }
+type DiscountCodeResponse = { discount_code: DiscountCode }
+type VariantResponse = { variant: Variant }
+
 type CommandLineArgs = {
   values: {
     variantId: string
@@ -11,24 +19,6 @@ type CommandLineArgs = {
     png?: boolean
   }
   positionals: string[]
-}
-
-// Types for Shopify API responses
-type ShopifyPriceRule = {
-  id: string
-  value_type: string
-  value: string
-  customer_selection: string
-  target_type: string
-  target_selection: string
-  allocation_method: string
-  entitled_variant_ids: string[]
-}
-
-type ShopifyDiscount = {
-  id: string
-  price_rule_id: string
-  code: string
 }
 
 // Parse command line arguments
@@ -124,7 +114,7 @@ async function createCoupon() {
     const code = generateCouponCode()
 
     // First, create the price rule targeting the specific variant
-    const priceRuleResponse = await fetch(`https://${shop}.myshopify.com/admin/api/2024-01/price_rules.json`, {
+    const priceRuleResponse = await fetch(`https://${shop}.myshopify.com/admin/api/2026-01/price_rules.json`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -151,11 +141,12 @@ async function createCoupon() {
       throw new Error(`Failed to create price rule: ${await priceRuleResponse.text()}`)
     }
 
-    const priceRule = (await priceRuleResponse.json()).price_rule as ShopifyPriceRule
+    const priceJson: PriceRuleResponse = await priceRuleResponse.json()
+    const priceRule = priceJson.price_rule
 
     // Then, create the discount code
     const discountResponse = await fetch(
-      `https://${shop}.myshopify.com/admin/api/2024-01/price_rules/${priceRule.id}/discount_codes.json`,
+      `https://${shop}.myshopify.com/admin/api/2026-01/price_rules/${priceRule.id}/discount_codes.json`,
       {
         method: 'POST',
         headers: {
@@ -174,7 +165,8 @@ async function createCoupon() {
       throw new Error(`Failed to create discount code: ${await discountResponse.text()}`)
     }
 
-    const discount = (await discountResponse.json()).discount_code as ShopifyDiscount
+    const discountJson: DiscountCodeResponse = await discountResponse.json()
+    const discount = discountJson.discount_code
 
     // Prepare content for both console and image
     const asciiArt = [
@@ -205,7 +197,7 @@ async function createCoupon() {
 
     // Fetch variant details to show more information
     const variantResponse = await fetch(
-      `https://${shop}.myshopify.com/admin/api/2024-01/variants/${values.variantId}.json`,
+      `https://${shop}.myshopify.com/admin/api/2026-01/variants/${values.variantId}.json`,
       {
         headers: {
           'X-Shopify-Access-Token': accessToken,
@@ -214,12 +206,11 @@ async function createCoupon() {
     )
 
     if (variantResponse.ok) {
-      const variantData = await variantResponse.json()
-      console.log(`Variant Title: ${variantData.variant.title}`)
-      console.log(`Original Price: $${variantData.variant.price}`)
-      console.log(
-        `Discounted Price: $${(parseFloat(variantData.variant.price) * (1 - discountValue / 100)).toFixed(2)}`
-      )
+      const variantJson: VariantResponse = await variantResponse.json()
+      const variant = variantJson.variant
+      console.log(`Variant Title: ${variant.title}`)
+      console.log(`Original Price: $${variant.price}`)
+      console.log(`Discounted Price: $${(parseFloat(variant.price ?? '0') * (1 - discountValue / 100)).toFixed(2)}`)
       console.log(`Redeem at: subspace.shop`)
     }
   } catch (error: unknown) {

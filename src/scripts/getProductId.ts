@@ -1,27 +1,11 @@
 #!/usr/bin/env bun
 import { parseArgs } from 'node:util'
+import type { RestResources } from '@shopify/shopify-api/rest/admin/2026-01'
 
-// Types for Shopify API responses
-type ShopifyVariant = {
-  id: string
-  product_id: string
-  title: string
-  sku: string
-  price: string
-  option1: string | null
-  option2: string | null
-  option3: string | null
-}
+type Product = InstanceType<RestResources['Product']>
+type Variant = InstanceType<RestResources['Variant']>
 
-type ShopifyProduct = {
-  id: string
-  title: string
-  variants: ShopifyVariant[]
-}
-
-type ShopifyProductsResponse = {
-  products: ShopifyProduct[]
-}
+type ProductsResponse = { products: Product[] }
 
 // Parse command line arguments
 const { values } = parseArgs({
@@ -65,13 +49,13 @@ async function findProduct() {
 
   try {
     // Initialize an empty array to store all products
-    let allProducts: ShopifyProduct[] = []
+    let allProducts: Product[] = []
     let hasNextPage = true
     let nextPageToken = ''
 
     // Fetch all products (paginated)
     while (hasNextPage) {
-      const url = new URL(`https://${shop}.myshopify.com/admin/api/2024-01/products.json`)
+      const url = new URL(`https://${shop}.myshopify.com/admin/api/2026-01/products.json`)
       url.searchParams.append('limit', '250') // Maximum allowed by Shopify
       if (nextPageToken) {
         url.searchParams.append('page_info', nextPageToken)
@@ -101,13 +85,15 @@ async function findProduct() {
         hasNextPage = false
       }
 
-      const data = (await response.json()) as ShopifyProductsResponse
-      allProducts = allProducts.concat(data.products)
+      const json: ProductsResponse = await response.json()
+      allProducts = allProducts.concat(json.products)
     }
 
     // Filter products based on provided criteria
+    const variants = (p: Product) => (Array.isArray(p.variants) ? p.variants : []) as Variant[]
+
     const matchingProducts = allProducts.filter(product => {
-      return product.variants.some(variant => {
+      return variants(product).some(variant => {
         let match = true
 
         if (values.sku) {
@@ -116,8 +102,8 @@ async function findProduct() {
         if (values.title) {
           match =
             match &&
-            (product.title.toLowerCase().includes(values.title.toLowerCase()) ||
-              variant.title.toLowerCase().includes(values.title.toLowerCase()))
+            ((product.title ?? '').toLowerCase().includes(values.title.toLowerCase()) ||
+              (variant.title ?? '').toLowerCase().includes(values.title.toLowerCase()))
         }
         if (values.option1) {
           match = match && variant.option1?.toLowerCase() === values.option1.toLowerCase()
@@ -145,7 +131,7 @@ async function findProduct() {
       console.log(`Product ID: ${product.id}`)
       console.log('\nMatching variants:')
 
-      const matchingVariants = product.variants.filter(variant => {
+      const matchingVariants = variants(product).filter(variant => {
         let match = true
         if (values.sku) match = match && variant.sku === values.sku
         if (values.option1) match = match && variant.option1?.toLowerCase() === values.option1.toLowerCase()
