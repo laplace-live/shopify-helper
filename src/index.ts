@@ -207,7 +207,7 @@ providers.forEach(provider => {
 
     if (data.length > 0) {
       const customNote = args.note ? ` - ${args.note}` : ''
-      const outputFilename = `${new Date().toISOString().slice(0, 10)}_${collection}_${providerStr}${customNote}.xlsx`
+      const outputFilename = `${new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '')}_${collection}_${providerStr}${customNote}.xlsx`
       const fullPath = args.outputDir ? `${args.outputDir}/${outputFilename}` : outputFilename
       const newWb = XLSX.utils.book_new()
       const newWorksheet = XLSX.utils.json_to_sheet(
