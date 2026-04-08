@@ -1,6 +1,5 @@
-import type { ShopifyOrderExportItem } from '../types'
-
 import { CHINA_PROVINCES, COUNTRIES, COUNTY_LEVEL_CITIES } from '../const/geo'
+import type { ShopifyOrderExportItem } from '../types'
 
 export function normalizeCity(cityName: string) {
   const parts = cityName.split('市')
