@@ -26,10 +26,10 @@ export function generateRouzaoPhone(phone: string | number) {
 export function processAddr(row: ShopifyOrderExportItem) {
   const country = COUNTRIES[row['Shipping Country'] || ''] || ''
   const prov = CHINA_PROVINCES[row['Shipping Province'] || ''] || ''
-  const street = row['Shipping Street'] || ''
+  const street = String(row['Shipping Street'] || '')
   const zip = row['Shipping Zip'] || ''
   const phone = row['Shipping Phone']
-  let city = normalizeCity(row['Shipping City'] || '')
+  let city = normalizeCity(String(row['Shipping City'] || ''))
 
   if (COUNTY_LEVEL_CITIES[city]) {
     city = `${COUNTY_LEVEL_CITIES[city]}${city}`

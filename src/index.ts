@@ -9,9 +9,9 @@ XLSX.set_fs(fs)
 
 /* load 'stream' for stream support */
 import { Readable } from 'node:stream'
-
+import { PROVIDER_CHUNK_SIZE } from './config'
 import type { ShopifyOrderExportItem } from './types'
-
+import { chunkByOrderKey } from './utils/chunkByOrderKey'
 import { extractCollection } from './utils/extractCollection'
 import { preprocessRow } from './utils/preprocessRow'
 import { processAddr } from './utils/processAddr'
@@ -202,24 +202,39 @@ providers.forEach(provider => {
   )
 
   // Generate Excel files for each collection
+  const chunkSize = PROVIDER_CHUNK_SIZE[provider] ?? 0
+
   Object.entries(groupedData).forEach(([collection, data]) => {
     const providerStr = provider.toLowerCase().replace(/_$/g, '')
 
     if (data.length > 0) {
       const customNote = args.note ? ` - ${args.note}` : ''
-      const outputFilename = `${new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '')}_${collection}_${providerStr}${customNote}.xlsx`
-      const fullPath = args.outputDir ? `${args.outputDir}/${outputFilename}` : outputFilename
-      const newWb = XLSX.utils.book_new()
-      const newWorksheet = XLSX.utils.json_to_sheet(
-        data.map(item => {
-          // Remove internal collection field
-          const { _collection, ...rest } = item
-          return rest
-        })
-      )
-      XLSX.utils.book_append_sheet(newWb, newWorksheet, `Filtered Data`)
-      XLSX.writeFile(newWb, fullPath)
-      consola.success(`[${collection}] ${providerStr}: ${data.length} items`)
+      const timestamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '')
+
+      const chunks = chunkSize > 0 ? chunkByOrderKey(data, chunkSize, '第三方订单号') : [data]
+
+      const needsPartSuffix = chunks.length > 1
+
+      chunks.forEach((chunk, chunkIdx) => {
+        const partSuffix = needsPartSuffix ? `_part${chunkIdx + 1}` : ''
+        const outputFilename = `${timestamp}_${collection}_${providerStr}${partSuffix}${customNote}.xlsx`
+        const fullPath = args.outputDir ? `${args.outputDir}/${outputFilename}` : outputFilename
+        const newWb = XLSX.utils.book_new()
+        const newWorksheet = XLSX.utils.json_to_sheet(
+          chunk.map(item => {
+            const { _collection, ...rest } = item
+            return rest
+          })
+        )
+        XLSX.utils.book_append_sheet(newWb, newWorksheet, 'Filtered Data')
+        XLSX.writeFile(newWb, fullPath)
+
+        if (needsPartSuffix) {
+          consola.success(`[${collection}] ${providerStr} part ${chunkIdx + 1}/${chunks.length}: ${chunk.length} items`)
+        } else {
+          consola.success(`[${collection}] ${providerStr}: ${data.length} items`)
+        }
+      })
     } else {
       consola.info(`No items found for ${providerStr} in collection: ${collection}`)
     }
