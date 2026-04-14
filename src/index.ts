@@ -15,6 +15,7 @@ import { chunkByOrderKey } from './utils/chunkByOrderKey'
 import { extractCollection } from './utils/extractCollection'
 import { preprocessRow } from './utils/preprocessRow'
 import { processAddr } from './utils/processAddr'
+import { sanitizeName } from './utils/sanitizeName'
 
 XLSX.stream.set_readable(Readable)
 
@@ -89,11 +90,12 @@ providers.forEach(provider => {
       const collection = extractCollection(row['Lineitem sku'])
       const resolvedSku = row['Lineitem sku'].replace(/__COLLE:.+$/, '')
       const resolvedPostal = addObj.zip.toString().replace("'", '')
+      const shippingName = sanitizeName(row['Shipping Name'])
 
       if (isRouzao) {
         return {
           第三方订单号: orderId,
-          收件人: row['Shipping Name'],
+          收件人: shippingName,
           联系电话: addObj.rouzaoPhone,
           收件地址: addObj.rouzaoAddr,
           商家编码: resolvedSku,
@@ -107,7 +109,7 @@ providers.forEach(provider => {
         return {
           产品编号: resolvedSku.replace(provider, ''),
           产品数量: row['Lineitem quantity'],
-          收货地址: `${row['Shipping Name']}，${addObj.rouzaoPhone}，${addObj.rouzaoAddr}`,
+          收货地址: `${shippingName}，${addObj.rouzaoPhone}，${addObj.rouzaoAddr}`,
           备注: orderId,
           '快递单号（供应商填写）': '',
           _collection: collection,
@@ -132,7 +134,7 @@ providers.forEach(provider => {
           商品备注: '',
           运费: '',
           买家留言: '',
-          收货人: row['Shipping Name'],
+          收货人: shippingName,
           联系电话: addObj.rouzaoPhone,
           联系手机: '',
           收货地址: addObj.rouzaoAddr,
@@ -177,7 +179,7 @@ providers.forEach(provider => {
         产品信息: row['Lineitem name'],
         数量: row['Lineitem quantity'],
         SKU: resolvedSku.replace(provider, ''),
-        姓名: row['Shipping Name'],
+        姓名: shippingName,
         '州/省': addObj.prov,
         城市: addObj.city,
         地址1: addObj.street,
