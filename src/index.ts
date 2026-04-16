@@ -56,8 +56,15 @@ if (!worksheet) throw new Error(`Worksheet "${sheetName}" not found`)
 const json = XLSX.utils.sheet_to_json<ShopifyOrderExportItem>(worksheet)
 
 // Filter out rows without SKU
+const noSkuRows = json.filter(row => !row['Lineitem sku'])
 const resolvedJson = json.filter(row => row['Lineitem sku'])
 consola.start(`Got ${resolvedJson.length} item${resolvedJson.length > 1 && 's'}`)
+if (noSkuRows.length > 0) {
+  const noSkuOrders = new Set(noSkuRows.map(row => row.Name))
+  consola.warn(
+    `Skipped ${noSkuRows.length} row(s) without SKU (${noSkuOrders.size} order(s): ${[...noSkuOrders].join(', ')})`
+  )
+}
 
 const processedJson = preprocessRow(resolvedJson)
 
@@ -66,132 +73,152 @@ const providers = providersString.split(',')
 const orderPrefix = process.env.ORDER_PREFIX || 'SHOPIFY'
 
 providers.forEach(provider => {
+  const skippedCancelled = new Set<string>()
+  const skippedNotPending = new Set<string>()
+  const skippedRequested = new Set<string>()
+
   const filteredData = processedJson
     // Filter out the necessary columns
     .filter(row => {
-      // sku can be empty
-      return (
-        row['Lineitem sku']?.startsWith(provider) &&
-        // Orders cancelled will still be exported by Shopify, so we need to exclude it here
-        !row['Cancelled at'] &&
-        // Only include items that are pending fulfillment
-        row['Lineitem fulfillment status'] === 'pending' &&
-        // Exclude item fulfillment already requested by shop owner
-        !row.Tags?.includes('Items Requested')
-      )
+      if (!row['Lineitem sku']?.startsWith(provider)) return false
+
+      if (row['Cancelled at']) {
+        skippedCancelled.add(row.Name)
+        return false
+      }
+      if (row['Lineitem fulfillment status'] !== 'pending') {
+        skippedNotPending.add(row.Name)
+        return false
+      }
+      if (row.Tags?.includes('Items Requested')) {
+        skippedRequested.add(row.Name)
+        return false
+      }
+      return true
     })
-    // Map keys
-    .map((row, idx) => {
-      const isRouzao = row['Lineitem sku']?.startsWith('ROUZAO_')
-      const isGuanyi = row['Lineitem sku']?.startsWith('SUBSPACE_WH1_')
-      const isSimple = row['Lineitem sku']?.startsWith('TAOBAO_MJT_')
-      const orderId = args.orderId ? `${orderPrefix}${row.Name}_${args.orderId}` : `${orderPrefix}${row.Name}`
-      const addObj = processAddr(row)
-      const collection = extractCollection(row['Lineitem sku'])
-      const resolvedSku = row['Lineitem sku'].replace(/__COLLE:.+$/, '')
-      const resolvedPostal = addObj.zip.toString().replace("'", '')
-      const shippingName = sanitizeName(row['Shipping Name'])
 
-      if (isRouzao) {
-        return {
-          第三方订单号: orderId,
-          收件人: shippingName,
-          联系电话: addObj.rouzaoPhone,
-          收件地址: addObj.rouzaoAddr,
-          商家编码: resolvedSku,
-          下单数量: row['Lineitem quantity'],
-          _collection: collection,
-        }
-      }
+  const totalSkipped = skippedCancelled.size + skippedNotPending.size + skippedRequested.size
+  if (totalSkipped > 0) {
+    consola.warn(`[${provider}] Skipped ${totalSkipped} order(s):`)
+    if (skippedCancelled.size > 0)
+      consola.warn(`  - Cancelled: ${skippedCancelled.size} (${[...skippedCancelled].join(', ')})`)
+    if (skippedNotPending.size > 0)
+      consola.warn(`  - Not pending: ${skippedNotPending.size} (${[...skippedNotPending].join(', ')})`)
+    if (skippedRequested.size > 0)
+      consola.warn(`  - Already requested: ${skippedRequested.size} (${[...skippedRequested].join(', ')})`)
+  }
 
-      // 简易表单，地址不分字段
-      if (isSimple) {
-        return {
-          产品编号: resolvedSku.replace(provider, ''),
-          产品数量: row['Lineitem quantity'],
-          收货地址: `${shippingName}，${addObj.rouzaoPhone}，${addObj.rouzaoAddr}`,
-          备注: orderId,
-          '快递单号（供应商填写）': '',
-          _collection: collection,
-        }
-      }
+  const mappedData = filteredData.map((row, idx) => {
+    const isRouzao = row['Lineitem sku']?.startsWith('ROUZAO_')
+    const isGuanyi = row['Lineitem sku']?.startsWith('SUBSPACE_WH1_')
+    const isSimple = row['Lineitem sku']?.startsWith('TAOBAO_MJT_')
+    const orderId = args.orderId ? `${orderPrefix}${row.Name}_${args.orderId}` : `${orderPrefix}${row.Name}`
+    const addObj = processAddr(row)
+    const collection = extractCollection(row['Lineitem sku'])
+    const resolvedSku = row['Lineitem sku'].replace(/__COLLE:.+$/, '')
+    const resolvedPostal = addObj.zip.toString().replace("'", '')
+    const shippingName = sanitizeName(row['Shipping Name'])
 
-      // 金蝶管易ERP
-      // Empty fields are requied by the REP
-      if (isGuanyi) {
-        return {
-          店铺: process.env.GUANYI_ERP_SHOP_NAME || '未知店铺',
-          平台单号: orderId,
-          买家会员: addObj.rouzaoPhone,
-          支付金额: !process.env.GUANYI_ERP_PRIVATE_MODE ? row.Total : 0,
-          商品名称: row['Lineitem name'],
-          商品代码: resolvedSku.replace(provider, ''),
-          规格代码: resolvedSku.replace(provider, ''),
-          规格名称: '',
-          是否赠品: '',
-          数量: row['Lineitem quantity'],
-          价格: !process.env.GUANYI_ERP_PRIVATE_MODE ? row['Lineitem price'] : 0,
-          商品备注: '',
-          运费: '',
-          买家留言: '',
-          收货人: shippingName,
-          联系电话: addObj.rouzaoPhone,
-          联系手机: '',
-          收货地址: addObj.rouzaoAddr,
-          省: addObj.prov,
-          市: addObj.city,
-          区: '',
-          邮编: '',
-          订单创建时间: '',
-          订单付款时间: '',
-          发货时间: '',
-          物流单号: '',
-          物流公司: '',
-          卖家备注: '',
-          发票种类: '',
-          发票类型: '',
-          发票抬头: '',
-          纳税人识别号: '',
-          开户行: '',
-          账号: '',
-          地址: '',
-          电话: '',
-          是否手机订单: '',
-          是否货到付款: '',
-          支付方式: '',
-          支付交易号: '',
-          真实姓名: '',
-          身份证号: '',
-          仓库名称: '',
-          预计发货时间: '',
-          预计送达时间: '',
-          订单类型: '',
-          是否分销商订单: '',
-          业务员: '',
-          _collection: collection,
-        }
-      }
-
-      // General provider
+    if (isRouzao) {
       return {
-        订单ID: orderId,
-        商品编号: `${orderId}-${idx + 1}`,
-        产品信息: row['Lineitem name'],
-        数量: row['Lineitem quantity'],
-        SKU: resolvedSku.replace(provider, ''),
-        姓名: shippingName,
-        '州/省': addObj.prov,
-        城市: addObj.city,
-        地址1: addObj.street,
-        邮编: resolvedPostal,
-        电话2: addObj.phone,
-        收货国家: addObj.country,
+        第三方订单号: orderId,
+        收件人: shippingName,
+        联系电话: addObj.rouzaoPhone,
+        收件地址: addObj.rouzaoAddr,
+        商家编码: resolvedSku,
+        下单数量: row['Lineitem quantity'],
         _collection: collection,
       }
-    })
+    }
+
+    // 简易表单，地址不分字段
+    if (isSimple) {
+      return {
+        产品编号: resolvedSku.replace(provider, ''),
+        产品数量: row['Lineitem quantity'],
+        收货地址: `${shippingName}，${addObj.rouzaoPhone}，${addObj.rouzaoAddr}`,
+        备注: orderId,
+        '快递单号（供应商填写）': '',
+        _collection: collection,
+      }
+    }
+
+    // 金蝶管易ERP
+    // Empty fields are requied by the REP
+    if (isGuanyi) {
+      return {
+        店铺: process.env.GUANYI_ERP_SHOP_NAME || '未知店铺',
+        平台单号: orderId,
+        买家会员: addObj.rouzaoPhone,
+        支付金额: !process.env.GUANYI_ERP_PRIVATE_MODE ? row.Total : 0,
+        商品名称: row['Lineitem name'],
+        商品代码: resolvedSku.replace(provider, ''),
+        规格代码: resolvedSku.replace(provider, ''),
+        规格名称: '',
+        是否赠品: '',
+        数量: row['Lineitem quantity'],
+        价格: !process.env.GUANYI_ERP_PRIVATE_MODE ? row['Lineitem price'] : 0,
+        商品备注: '',
+        运费: '',
+        买家留言: '',
+        收货人: shippingName,
+        联系电话: addObj.rouzaoPhone,
+        联系手机: '',
+        收货地址: addObj.rouzaoAddr,
+        省: addObj.prov,
+        市: addObj.city,
+        区: '',
+        邮编: '',
+        订单创建时间: '',
+        订单付款时间: '',
+        发货时间: '',
+        物流单号: '',
+        物流公司: '',
+        卖家备注: '',
+        发票种类: '',
+        发票类型: '',
+        发票抬头: '',
+        纳税人识别号: '',
+        开户行: '',
+        账号: '',
+        地址: '',
+        电话: '',
+        是否手机订单: '',
+        是否货到付款: '',
+        支付方式: '',
+        支付交易号: '',
+        真实姓名: '',
+        身份证号: '',
+        仓库名称: '',
+        预计发货时间: '',
+        预计送达时间: '',
+        订单类型: '',
+        是否分销商订单: '',
+        业务员: '',
+        _collection: collection,
+      }
+    }
+
+    // General provider
+    return {
+      订单ID: orderId,
+      商品编号: `${orderId}-${idx + 1}`,
+      产品信息: row['Lineitem name'],
+      数量: row['Lineitem quantity'],
+      SKU: resolvedSku.replace(provider, ''),
+      姓名: shippingName,
+      '州/省': addObj.prov,
+      城市: addObj.city,
+      地址1: addObj.street,
+      邮编: resolvedPostal,
+      电话2: addObj.phone,
+      收货国家: addObj.country,
+      _collection: collection,
+    }
+  })
 
   // Group data by collection
-  const groupedData = filteredData.reduce(
+  const groupedData = mappedData.reduce(
     (acc, item) => {
       const collection = item._collection
       if (!acc[collection]) {
@@ -200,7 +227,7 @@ providers.forEach(provider => {
       acc[collection].push(item)
       return acc
     },
-    {} as Record<string, typeof filteredData>
+    {} as Record<string, typeof mappedData>
   )
 
   // Generate Excel files for each collection
