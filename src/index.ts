@@ -218,17 +218,14 @@ providers.forEach(provider => {
   })
 
   // Group data by collection
-  const groupedData = mappedData.reduce(
-    (acc, item) => {
-      const collection = item._collection
-      if (!acc[collection]) {
-        acc[collection] = []
-      }
-      acc[collection].push(item)
-      return acc
-    },
-    {} as Record<string, typeof mappedData>
-  )
+  const groupedData = mappedData.reduce<Record<string, typeof mappedData>>((acc, item) => {
+    const collection = item._collection
+    if (!acc[collection]) {
+      acc[collection] = []
+    }
+    acc[collection].push(item)
+    return acc
+  }, {})
 
   // Generate Excel files for each collection
   const chunkSize = PROVIDER_CHUNK_SIZE[provider] ?? 0
