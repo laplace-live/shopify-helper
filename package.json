@@ -10,19 +10,23 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "build": "bun build ./src/index.ts --outdir ./dist --target bun",
+    "test": "bun test",
     "lint": "biome check",
     "format": "biome format --write"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.4",
     "@types/bun": "^1.3.14",
+    "@types/papaparse": "^5.5.2",
+    "read-excel-file": "^9.3.3",
     "typescript": "^7.0.2"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.100",
     "@shopify/shopify-api": "^13.1.0",
     "consola": "^3.4.2",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.1/xlsx-0.20.1.tgz"
+    "papaparse": "^5.5.4",
+    "write-excel-file": "^4.1.1"
   },
   "packageManager": "bun@1.2.2"
 }

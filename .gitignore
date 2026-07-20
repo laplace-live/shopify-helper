@@ -177,4 +177,5 @@ dist
 .npmrc
 
 output/
+references/
 repomix-output.md

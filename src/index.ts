@@ -1,14 +1,7 @@
-/* load 'fs' for readFile and writeFile support */
-import * as fs from 'node:fs'
 import { parseArgs } from 'node:util'
 import { consola } from 'consola'
-// https://docs.sheetjs.com/docs/getting-started/installation/bun/
-import * as XLSX from 'xlsx'
-
-XLSX.set_fs(fs)
-
-/* load 'stream' for stream support */
-import { Readable } from 'node:stream'
+import Papa from 'papaparse'
+import writeXlsxFile from 'write-excel-file/node'
 import { PROVIDER_CHUNK_SIZE } from './config'
 import type { ShopifyOrderExportItem } from './types'
 import { chunkByOrderKey } from './utils/chunkByOrderKey'
@@ -16,12 +9,7 @@ import { extractCollection } from './utils/extractCollection'
 import { preprocessRow } from './utils/preprocessRow'
 import { processAddr } from './utils/processAddr'
 import { sanitizeName } from './utils/sanitizeName'
-
-XLSX.stream.set_readable(Readable)
-
-/* load the codepage support library for extended support with older formats  */
-// import * as cpexcel from 'xlsx/dist/cpexcel.full.mjs'
-// XLSX.set_cptable(cpexcel)
+import { toSheetData } from './utils/toSheetData'
 
 // https://bun.sh/guides/process/argv
 const { values: args } = parseArgs({
@@ -44,16 +32,18 @@ if (!args.input) {
 const filePath = args.input
 const data = await Bun.file(filePath).text()
 
-const wb = XLSX.read(data, { type: 'string' })
+// Parse the Shopify CSV export. `dynamicTyping` mirrors the coercion the previous
+// SheetJS reader applied, keeping numeric columns (quantity, price, phone) as numbers
+// so they land in the output as numeric cells rather than text.
+const { data: json, errors } = Papa.parse<ShopifyOrderExportItem>(data, {
+  header: true,
+  dynamicTyping: true,
+  skipEmptyLines: true,
+})
 
-// Get the first sheet name and the worksheet
-const sheetName = wb.SheetNames[0]
-if (!sheetName) throw new Error('No sheets found in workbook')
-const worksheet = wb.Sheets[sheetName]
-if (!worksheet) throw new Error(`Worksheet "${sheetName}" not found`)
-
-// Convert to JSON
-const json = XLSX.utils.sheet_to_json<ShopifyOrderExportItem>(worksheet)
+if (errors.length > 0) {
+  consola.warn(`CSV parsed with ${errors.length} issue(s), first: ${errors[0]?.message}`)
+}
 
 // Filter out rows without SKU
 const noSkuRows = json.filter(row => !row['Lineitem sku'])
@@ -72,7 +62,7 @@ const providersString = process.env.PROVIDERS || ''
 const providers = providersString.split(',')
 const orderPrefix = process.env.ORDER_PREFIX || 'SHOPIFY'
 
-providers.forEach(provider => {
+for (const provider of providers) {
   const skippedCancelled = new Set<string>()
   const skippedNotPending = new Set<string>()
   const skippedRequested = new Set<string>()
@@ -230,7 +220,7 @@ providers.forEach(provider => {
   // Generate Excel files for each collection
   const chunkSize = PROVIDER_CHUNK_SIZE[provider] ?? 0
 
-  Object.entries(groupedData).forEach(([collection, data]) => {
+  for (const [collection, data] of Object.entries(groupedData)) {
     const providerStr = provider.toLowerCase().replace(/_$/g, '')
 
     if (data.length > 0) {
@@ -241,28 +231,26 @@ providers.forEach(provider => {
 
       const needsPartSuffix = chunks.length > 1
 
-      chunks.forEach((chunk, chunkIdx) => {
+      for (const [chunkIdx, chunk] of chunks.entries()) {
         const partSuffix = needsPartSuffix ? `_part${chunkIdx + 1}` : ''
         const outputFilename = `${timestamp}_${collection}_${providerStr}${partSuffix}${customNote}.xlsx`
         const fullPath = args.outputDir ? `${args.outputDir}/${outputFilename}` : outputFilename
-        const newWb = XLSX.utils.book_new()
-        const newWorksheet = XLSX.utils.json_to_sheet(
+        const sheetData = toSheetData(
           chunk.map(item => {
             const { _collection, ...rest } = item
             return rest
           })
         )
-        XLSX.utils.book_append_sheet(newWb, newWorksheet, 'Filtered Data')
-        XLSX.writeFile(newWb, fullPath)
+        await writeXlsxFile(sheetData, { sheet: 'Filtered Data' }).toFile(fullPath)
 
         if (needsPartSuffix) {
           consola.success(`[${collection}] ${providerStr} part ${chunkIdx + 1}/${chunks.length}: ${chunk.length} items`)
         } else {
           consola.success(`[${collection}] ${providerStr}: ${data.length} items`)
         }
-      })
+      }
     } else {
       consola.info(`No items found for ${providerStr} in collection: ${collection}`)
     }
-  })
-})
+  }
+}
