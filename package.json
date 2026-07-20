@@ -15,10 +15,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.4",
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5.9.3"
+    "@types/bun": "latest",
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.100",
