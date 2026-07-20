@@ -14,15 +14,15 @@
     "format": "biome format --write"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.10",
+    "@biomejs/biome": "^2.5.4",
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.97",
-    "@shopify/shopify-api": "^13.0.0",
+    "@napi-rs/canvas": "^0.1.100",
+    "@shopify/shopify-api": "^13.1.0",
     "consola": "^3.4.2",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.1/xlsx-0.20.1.tgz"
   },
