@@ -8,6 +8,10 @@
     "jsx": "react-jsx",
     "allowJs": true,
 
+    // TS7 (tsgo) does not auto-include node_modules/@types — name them explicitly.
+    // "bun" pulls in bun-types -> @types/node, providing Bun, process and node:* modules.
+    "types": ["bun"],
+
     // Bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
