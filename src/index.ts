@@ -6,6 +6,7 @@ import { PROVIDER_CHUNK_SIZE } from './config'
 import type { ShopifyOrderExportItem } from './types'
 import { chunkByOrderKey } from './utils/chunkByOrderKey'
 import { extractCollection } from './utils/extractCollection'
+import { getColumnWidths } from './utils/getColumnWidths'
 import { preprocessRow } from './utils/preprocessRow'
 import { processAddr } from './utils/processAddr'
 import { sanitizeName } from './utils/sanitizeName'
@@ -241,7 +242,10 @@ for (const provider of providers) {
             return rest
           })
         )
-        await writeXlsxFile(sheetData, { sheet: 'Filtered Data' }).toFile(fullPath)
+        await writeXlsxFile(sheetData, {
+          sheet: 'Filtered Data',
+          columns: getColumnWidths(sheetData),
+        }).toFile(fullPath)
 
         if (needsPartSuffix) {
           consola.success(`[${collection}] ${providerStr} part ${chunkIdx + 1}/${chunks.length}: ${chunk.length} items`)
