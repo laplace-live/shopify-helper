@@ -22,7 +22,7 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.100",
+    "@napi-rs/canvas": "^1.0.10",
     "@shopify/shopify-api": "^13.1.0",
     "consola": "^3.4.2",
     "papaparse": "^5.7.0",
